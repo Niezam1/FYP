@@ -33,7 +33,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <title>Meeting</title>
-        <link rel="stylesheet" href="Home.css">
+        <link rel="stylesheet" href="css/Home.css">
 
         <style type="text/css">
             .hamburger-pic {
@@ -388,7 +388,7 @@
                 </div>
             </div>
 
-            <form action="" method="GET">
+            <form id="userForm" method="GET">
                 <div class="userList_container">
                     <div class="filter_container">
                         <div class="search_container">
@@ -396,7 +396,7 @@
                         </div>
 
                         <div class="apply_container">
-                            <button type="submit" id="apply "value="apply">Apply</button>
+                            <button type="button" id="applyBtn">Apply</button>
                         </div>
                     </div>
 
@@ -429,9 +429,8 @@
                             ?>
                         </tbody>
                     </table>
-                    </div>
                 </div>
-            </form>  
+            </form>
 
         <script>
             let subMenu = document.getElementById("subMenu");
@@ -443,9 +442,8 @@
 
             function toggleHamburger() {
                 const sidebar = document.getElementById('sidebar');
-                const isOpen = sidebar.style.left === '0px'; // Check if sidebar is open
+                const isOpen = sidebar.style.left === '0px'; 
 
-                // Toggle the sidebar position
                 sidebar.style.left = isOpen ? '-250px' : '0px';
             }
 
@@ -453,128 +451,83 @@
                 subMenu.classList.toggle("open-menu");
             }
 
-            document.getElementById('search').addEventListener('input', function(){
-                let filter = this.value.toLowerCase();
-                let rows = document.querySelectorAll('.user-row');
-
-                rows.forEach(function(row){
-                    let name = row.cells[0].textContent.toLowerCase();
-
-                    if(name.includes(filter)){
-                        row.style.display = '';
-                    } else{
-                        row.style.display = 'none';
-                    }
+            document.getElementById('applyBtn').addEventListener('click', function() {
+                let selectedUsers = [];
+                document.querySelectorAll('input[name="check[]"]:checked').forEach((checkbox) => {
+                    selectedUsers.push(checkbox.value);
                 });
+
+                if (selectedUsers.length > 0) {
+                    updateTimetable(selectedUsers);
+                } else {
+                    alert('Please select at least one user.');
+                }
             });
 
-            // Function to fetch data from timetable based on its week and selected users
-function updateTimetable() {
-    // Update the URL query parameter without reloading the page
-    const url = new URL(window.location);
-    url.searchParams.set('week', currentWeek);
-    window.history.pushState({}, '', url);
-
-    // Get the selected user IDs from the checkboxes
-    let selectedUsers = [];
-    document.querySelectorAll('input[name="check[]"]:checked').forEach((checkbox) => {
-        selectedUsers.push(checkbox.value);
-    });
-
-    if (selectedUsers.length > 0) {
-        // Send fetch request with selected users and current week
-        fetch(`get_availability_checkbox.php?week=${currentWeek}&check[]=${selectedUsers.join('&check[]=')}`) 
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    updateTimetableCells(data.data); // Call the function to update the timetable cells
-                } else {
-                    console.error('Error:', data.message);
-                }
-            })
-            .catch(error => console.error('Error fetching timetable data:', error));
-    } else {
-        console.error("No users selected");
-    }
-}
-
-// Function to update the timetable cells based on fetched data
-function updateTimetableCells(data) {
-    // Create an object to group availability statuses by cellNo
-    let cellAvailability = {};
-
-    // Loop through the data and group availability statuses for each cell
-    data.forEach(item => {
-        const cellNo = item.cellNo;
-
-        // Initialize the array for this cell if not already done
-        if (!cellAvailability[cellNo]) {
-            cellAvailability[cellNo] = [];
-        }
-
-        // Add the current user's availability for this cell
-        cellAvailability[cellNo].push(item.availability);
-    });
-
-    // Now process each cell's availability to decide its color
-    Object.keys(cellAvailability).forEach(cellNo => {
-        const availabilities = cellAvailability[cellNo];
-        const cell = document.getElementById(cellNo); // Find the corresponding cell
-
-        if (cell) {
-            // Check if all availabilities are 'free'
-            const allFree = availabilities.every(status => status === 'free');
-
-            if (allFree) {
-                // If all statuses are 'free', set the cell color to green
-                cell.style.backgroundColor = 'green';
-            } else {
-                // If any status is not 'free', set the cell color to red
-                cell.style.backgroundColor = 'red';
+            function updateTimetable(selectedUsers) {
+                fetch(`get_availability_checkbox.php?week=${currentWeek}&check[]=${selectedUsers.join('&check[]=')}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateTimetableCells(data.data); 
+                        } else {
+                            console.error('Error:', data.message);
+                        }
+                    })
+                    .catch(error => console.error('Error fetching timetable data:', error));
             }
-        }
-    });
-}
 
+            function updateTimetableCells(data) {
+                document.querySelectorAll('.day').forEach(cell => {
+                    cell.style.backgroundColor = ''; 
+                });
 
+                data.forEach(item => {
+                    const cellNo = item.cellNo;
+                    const cell = document.getElementById(cellNo); 
 
-            // Change week and update the URL and timetable
+                    if (cell) {
+                        if (item.availability === 'free') {
+                            cell.style.backgroundColor = 'green';
+                        } else {
+                            cell.style.backgroundColor = 'red';
+                        }
+                    }
+                });
+            }
+
             function changeWeek(weekChange) {
                 currentWeek += weekChange;
 
-                // Prevent week number from going below 1 or above 14
                 if (currentWeek < 1) {
                     currentWeek = 1;
                 } else if (currentWeek > 14) {
                     currentWeek = 14;
                 }
 
-                // Update the URL with the current week
+                updateWeekDisplay();
+
                 const url = new URL(window.location);
                 url.searchParams.set('week', currentWeek);
                 window.history.pushState({}, '', url);
 
-                // Reload the page to reflect the new week data
-                location.reload();
+                let selectedUsers = [];
+                document.querySelectorAll('input[name="check[]"]:checked').forEach((checkbox) => {
+                    selectedUsers.push(checkbox.value);
+                });
+                
+                if (selectedUsers.length > 0) {
+                    updateTimetable(selectedUsers);
+                }
             }
 
-            // Initial page load actions
-            window.onload = function() {
+            window.addEventListener('load', function() {
                 const urlParams = new URLSearchParams(window.location.search);
-                const savedWeek = urlParams.get('week'); // Get 'week' from URL
-                if (savedWeek) {
-                    currentWeek = parseInt(savedWeek, 10);
-                } else {
-                    currentWeek = 1; // Default to week 1 if no week is in the URL
-                }
-                updateWeekDisplay(); // Show the saved week
-                updateTimetable(); // Load timetable for the current week
-            }
-            </script>
+                currentWeek = parseInt(urlParams.get('week')) || 1; 
+                updateWeekDisplay();
+            });
+
+
+        </script>
     </body>
 </html>
